@@ -1,0 +1,473 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "storageAccountType": {
+            "type": "string",
+            "defaultValue": "Standard_LRS",
+            "allowedValues": [
+                "Standard_LRS",
+                "Standard_GRS",
+                "Standard_ZRS",
+                "Premium_LRS"
+            ],
+            "metadata": {
+                "description": "Storage Account type"
+            }
+        },
+        "existingStorageAccountName": {
+            "type": "string",
+            "defaultValue": "emawa06072613",
+            "metadata": {
+                "description": "Existing Storage Account name for container with sample data"
+            }
+        },
+        "existingSourceContainer": {
+            "type": "string",
+            "defaultValue": "azcopytutorial",
+            "metadata": {
+                "description": "Exsiting source file container name with sample data"
+            }
+        },
+        "existingSAKey": {
+            "type": "string",
+            "defaultValue": "Izhov4rcZnSJeERts52JVJoaBF11G2Dp+8yWcmaLGWgNuJCeKNFZa2T6fF2pfWENgzCZos2zRweJgOJO0Ic+Cw==",
+            "metadata": {
+                "description": "Exsiting source file container access key"
+            }
+        },
+        "clusterName": {
+            "type": "string",
+            "defaultValue": "emawatest3",
+            "metadata": {
+                "description": "The name of the HDInsight cluster to create."
+            }
+        },
+        "loginUsername": {
+            "type": "string",
+            "defaultValue": "sparkadmin",
+            "metadata": {
+                "description": "These credentials can be used to submit jobs to the cluster, log into cluster dashboards, log into Ambari, and SSH into the cluster."
+            }
+        },
+        "loginPassword": {
+            "type": "securestring",
+            "defaultValue": "Password@123",
+            "metadata": {
+                "description": "The password must be at least 10 characters in length and must contain at least one digit, one non-alphanumeric character, and one upper or lower case letter."
+            }
+        },
+        "clusterNodeSize": {
+            "type": "string",
+            "defaultValue": "Standard_D14",
+            "allowedValues": [
+                "Standard_D12",
+                "Standard_D13",
+                "Standard_D14"
+            ],
+            "metadata": {
+                "description": "All nodes will be deployed using the specified hardware profile: D12(4 CPU Cores, 28GB of RAM), D13(8 CPU Cores, 56GB of RAM), D14(16 CPU Cores, 112 GB of RAM)."
+            }
+        },
+        "clusterWorkerNodeCount": {
+            "type": "int",
+            "defaultValue": 2,
+            "metadata": {
+                "description": "The number of worker nodes in the HDInsight cluster."
+            }
+        },
+        "administratorLogin": {
+            "type": "string",
+            "defaultValue": "sqladmin",
+            "metadata": {
+                "description": "The admin user of the SQL Server"
+            }
+        },
+        "administratorLoginPassword": {
+            "type": "securestring",
+            "defaultValue": "Password@123",
+            "metadata": {
+                "description": "The password of the admin user of the SQL Server"
+            }
+        },
+        "databaseName": {
+            "type": "string",
+            "defaultValue": "test",
+            "metadata": {
+                "description": "The name of the new database to create."
+            }
+        },
+        "dataWarehouseName": {
+            "type": "string",
+            "defaultValue": "Central SQL DW",
+            "metadata": {
+                "description": "The name of the new SQL Data Warehouse to create."
+            }
+        },
+        "targetSQLDWTable": {
+            "type": "string",
+            "defaultValue": "FactInternetSales",
+            "metadata": {
+                "description": "Existing target table in Azure SQL Database"
+            }
+        },
+        "collation": {
+            "type": "string",
+            "defaultValue": "SQL_LATIN1_GENERAL_CP1_CI_AS",
+            "metadata": {
+                "description": "The database collation for governing the proper use of characters."
+            }
+        },
+        "edition": {
+            "type": "string",
+            "defaultValue": "Basic",
+            "allowedValues": [
+                "Basic",
+                "Standard",
+                "Premium",
+                "DataWarehouse"
+            ],
+            "metadata": {
+                "description": "The type of database to create."
+            }
+        },
+        "maxSizeBytes": {
+            "type": "string",
+            "defaultValue": "1073741824",
+            "metadata": {
+                "description": "The maximum size, in bytes, for the database"
+            }
+        },
+        "requestedServiceObjectiveName": {
+            "type": "string",
+            "defaultValue": "Basic",
+            "allowedValues": [
+                "Basic",
+                "S0",
+                "S1",
+                "S2",
+                "P1",
+                "P2",
+                "P3"
+            ],
+            "metadata": {
+                "description": "Describes the performance level for Edition"
+            }
+        },
+        "dataFactoryName": {
+            "type": "string",
+            "defaultValue": "pipelineBlobtoSQLDW",
+            "metadata": {
+                "description": "Data Factory Account name"
+            }
+        }
+    },
+    "variables": {
+        "clusterStorageAccountName": "[concat('emawatest', uniquestring(resourceGroup().id))]",
+        "defaultApiVersion": "2015-06-15",
+        "clusterApiVersion": "2015-03-01-preview",
+        "clusterType": "spark",
+        "sqlserverName": "[concat('sqlserver', uniqueString(resourceGroup().id))]",
+        "azureSqlLinkedServiceName": "AzureSqlLinkedService",
+        "storageLinkedServiceName": "StorageLinkedService",
+        "BlobInputTableName": "BlobInputTable",
+        "SQLOutputTableName": "SQLOutputTable",
+        "PipelineName": "Blob2SQLPipeline"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "name": "[variables('clusterStorageAccountName')]",
+            "apiVersion": "2016-01-01",
+            "location": "[resourceGroup().location]",
+            "sku": {
+                "name": "[parameters('storageAccountType')]"
+            },
+            "kind": "Storage",
+            "properties": {}
+        },
+        {
+            "name": "[variables('sqlserverName')]",
+            "type": "Microsoft.Sql/servers",
+            "location": "[resourceGroup().location]",
+            "tags": {
+                "displayName": "SqlServer"
+            },
+            "apiVersion": "2014-04-01-preview",
+            "properties": {
+                "administratorLogin": "[parameters('administratorLogin')]",
+                "administratorLoginPassword": "[parameters('administratorLoginPassword')]",
+                "version": "12.0"
+            },
+            "resources": [
+                {
+                    "name": "[parameters('databaseName')]",
+                    "type": "databases",
+                    "location": "[resourceGroup().location]",
+                    "tags": {
+                        "displayName": "Database"
+                    },
+                    "apiVersion": "2014-04-01-preview",
+                    "dependsOn": [
+                        "[concat('Microsoft.Sql/servers/', variables('sqlserverName'))]"
+                    ],
+                    "properties": {
+                        "edition": "[parameters('edition')]",
+                        "collation": "[parameters('collation')]",
+                        "maxSizeBytes": "[parameters('maxSizeBytes')]",
+                        "requestedServiceObjectiveName": "[parameters('requestedServiceObjectiveName')]"
+                    }
+                },
+                {
+                    "name": "[parameters('dataWarehouseName')]",
+                    "type": "databases",
+                    "location": "[resourceGroup().location]",
+                    "tags": {
+                        "displayName": "Data Warehouse"
+                    },
+                    "apiVersion": "2014-04-01-preview",
+                    "dependsOn": [
+                        "[concat('Microsoft.Sql/servers/', variables('sqlserverName'))]"
+                    ],
+                    "properties": {
+                        "edition": "DataWarehouse",
+                        "collation": "[parameters('collation')]",
+                        "requestedServiceObjectiveName": "DW400"
+                    }
+                },
+                {
+                    "type": "firewallrules",
+                    "apiVersion": "2014-04-01-preview",
+                    "dependsOn": [
+                        "[concat('Microsoft.Sql/servers/', variables('sqlserverName'))]"
+                    ],
+                    "location": "[resourceGroup().location]",
+                    "name": "AllowAllWindowsAzureIps",
+                    "properties": {
+                        "endIpAddress": "0.0.0.0",
+                        "startIpAddress": "0.0.0.0"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "[parameters('clusterName')]",
+            "type": "Microsoft.HDInsight/clusters",
+            "location": "[resourceGroup().location]",
+            "apiVersion": "[variables('clusterApiVersion')]",
+            "dependsOn": [
+                "[concat('Microsoft.Storage/storageAccounts/',variables('clusterStorageAccountName'))]"
+            ],
+            "tags": {},
+            "properties": {
+                "clusterVersion": "3.4",
+                "osType": "Linux",
+                "tier": "standard",
+                "clusterDefinition": {
+                    "kind": "[variables('clusterType')]",
+                    "configurations": {
+                        "gateway": {
+                            "restAuthCredential.isEnabled": true,
+                            "restAuthCredential.username": "[parameters('loginUsername')]",
+                            "restAuthCredential.password": "[parameters('loginPassword')]"
+                        },
+                        "core-site": {
+                            "fs.defaultFS": "[concat('wasb://', parameters('clusterName'), '@', variables('clusterStorageAccountName'),'.blob.core.windows.net')]",
+                            "[concat('fs.azure.account.key.', variables('clusterStorageAccountName'), '.blob.core.windows.net')]": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('clusterStorageAccountName')), '2016-01-01').keys[0].value]"
+                        },
+                    }
+                },
+                "computeProfile": {
+                    "roles": [
+                        {
+                            "name": "headnode",
+                            "minInstanceCount": 1,
+                            "targetInstanceCount": 2,
+                            "hardwareProfile": {
+                                "vmSize": "[parameters('clusterNodeSize')]"
+                            },
+                            "osProfile": {
+                                "linuxOperatingSystemProfile": {
+                                    "username": "[concat('ssh', parameters('loginUsername'))]",
+                                    "password": "[parameters('loginPassword')]"
+                                }
+                            },
+                            "scriptActions": []
+                        },
+                        {
+                            "name": "workernode",
+                            "minInstanceCount": 1,
+                            "targetInstanceCount": "[parameters('clusterWorkerNodeCount')]",
+                            "hardwareProfile": {
+                                "vmSize": "[parameters('clusterNodeSize')]"
+                            },
+                            "osProfile": {
+                                "linuxOperatingSystemProfile": {
+                                    "username": "[concat('ssh', parameters('loginUsername'))]",
+                                    "password": "[parameters('loginPassword')]"
+                                }
+                            },
+                            "scriptActions": []
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "[parameters('dataFactoryName')]",
+            "apiVersion": "2015-10-01",
+            "type": "Microsoft.DataFactory/datafactories",
+            "location": "eastus",
+            "properties": {},
+            "resources": [
+                {
+                    "dependsOn": [
+                        "[concat('Microsoft.DataFactory/dataFactories/', parameters('dataFactoryName'))]"
+                    ],
+                    "type": "linkedservices",
+                    "name": "[variables('azureSqlLinkedServiceName')]",
+                    "apiVersion": "2015-10-01",
+                    "properties": {
+                        "type": "AzureSqlLinkedService",
+                        "connectionString": "[concat('Server=tcp:',variables('sqlServerName'),'.database.windows.net,1433;Database=', parameters('dataWarehouseName'), ';User ID=',parameters('administratorLogin'),';Password=',parameters('administratorLoginPassword'),';Trusted_Connection=False;Encrypt=True;Connection Timeout=30')]"
+                    }
+                },
+                {
+                    "dependsOn": [
+                        "[concat('Microsoft.DataFactory/dataFactories/', parameters('dataFactoryName'))]"
+                    ],
+                    "type": "linkedservices",
+                    "name": "[variables('storageLinkedServiceName')]",
+                    "apiVersion": "2015-10-01",
+                    "properties": {
+                        "type": "AzureStorageLinkedService",
+                        "connectionString": "[concat('DefaultEndpointsProtocol=https;AccountName=',parameters('existingStorageAccountName'),';AccountKey=', parameters('existingSAKey'))]"
+                    }
+                },
+                {
+                    "dependsOn": [
+                        "[concat('Microsoft.DataFactory/dataFactories/', parameters('dataFactoryName'))]",
+                        "[concat('Microsoft.DataFactory/dataFactories/', parameters('dataFactoryName'), '/linkedServices/', variables('storageLinkedServiceName'))]"
+                    ],
+                    "type": "tables",
+                    "name": "[variables('BlobInputTableName')]",
+                    "apiVersion": "2015-10-01",
+                    "properties": {
+                        "location": {
+                            "type": "AzureBlobLocation",
+                            "folderPath": "[parameters('existingSourceContainer')]",
+                            "format": {
+                                "type": "TextFormat",
+                                "columnDelimiter": ","
+                            },
+                            "linkedServiceName": "[variables('storageLinkedServiceName')]"
+                        },
+                        "availability": {
+                            "frequency": "Day",
+                            "interval": 1
+                        }
+                    }
+                },
+                {
+                    "dependsOn": [
+                        "[concat('Microsoft.DataFactory/dataFactories/', parameters('dataFactoryName'))]",
+                        "[concat('Microsoft.DataFactory/dataFactories/', parameters('dataFactoryName'), '/linkedServices/', variables('azureSqlLinkedServiceName'))]"
+                    ],
+                    "type": "tables",
+                    "name": "[variables('SQLOutputTableName')]",
+                    "apiVersion": "2015-10-01",
+                    "properties": {
+                        "location": {
+                            "type": "AzureSqlTableLocation",
+                            "tableName": "[parameters('targetSQLDWTable')]",
+                            "linkedServiceName": "[variables('azureSqlLinkedServiceName')]"
+                        },
+                        "availability": {
+                            "frequency": "Day",
+                            "interval": 1
+                        }
+                    }
+                },
+                {
+                    "dependsOn": [
+                        "[concat('Microsoft.DataFactory/dataFactories/', parameters('dataFactoryName'))]",
+                        "[concat('Microsoft.DataFactory/dataFactories/', parameters('dataFactoryName'), '/linkedServices/', variables('storageLinkedServiceName'))]",
+                        "[concat('Microsoft.DataFactory/dataFactories/', parameters('dataFactoryName'), '/linkedServices/', variables('azureSqlLinkedServiceName'))]",
+                        "[concat('Microsoft.DataFactory/dataFactories/', parameters('dataFactoryName'), '/tables/', variables('SQLOutputTableName'))]",
+                        "[concat('Microsoft.DataFactory/dataFactories/', parameters('dataFactoryName'), '/tables/', variables('BlobInputTableName'))]"
+                    ],
+                    "type": "datapipelines",
+                    "name": "[variables('PipelineName')]",
+                    "apiVersion": "2015-10-01",
+                    "properties": {
+                        "description": "Moving data from Blob to SQL DW",
+                        "activities": [
+                            {
+                                "name": "EgressDataAzure",
+                                "description": "Push data frm blob to Sql Azure",
+                                "type": "CopyActivity",
+                                "inputs": [
+                                    {
+                                        "name": "[variables('BlobInputTableName')]"
+                                    }
+                                ],
+                                "outputs": [
+                                    {
+                                        "name": "[variables('SQLOutputTableName')]"
+                                    }
+                                ],
+                                "transformation": {
+                                    "source": {
+                                        "type": "BlobSource"
+                                    },
+                                    "sink": {
+                                        "type": "SqlSink"
+                                    }
+                                },
+                                "Policy": {
+                                    "concurrency": 1,
+                                    "executionPriorityOrder": "NewestFirst",
+                                    "style": "StartOfInterval",
+                                    "retry": 0,
+                                    "timeout": "01:00:00"
+                                }
+                            }
+                        ],
+                        "start": "2015-12-09T00:00:00Z",
+                        "end": "2015-12-12T00:00:00Z"
+                    }
+                }
+            ]
+        }
+    ],
+    "outputs": {
+        "StorageAccountName": {
+            "type": "string",
+            "value": "[variables('clusterStorageAccountName')]"
+        },
+        "StorageAccountKeys": {
+            "value": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('clusterStorageAccountName')), '2016-01-01').keys[0].value]",
+            "type": "string"
+        },
+        "HDIClusterName": {
+            "value": "[parameters('clusterName')]",
+            "type": "string"
+        },
+        "SQLServerName": {
+            "value": "[variables('sqlserverName')]",
+            "type": "string"
+        },
+        "SQLDatabaseName": {
+            "value": "[parameters('databaseName')]",
+            "type": "string"
+        },
+        "SQLDataWarehouseName": {
+            "value": "[parameters('dataWarehouseName')]",
+            "type": "string"
+        },
+        // "Data Pipeline": {
+        //     "value": "[variables('PipelineName')]",
+        //     "type": "string"
+        // }
+    }
+}

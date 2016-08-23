@@ -1,0 +1,74 @@
+{
+            "apiVersion": "2015-03-01-preview",
+            "name": "dciborowspark2",
+            "type": "Microsoft.HDInsight/clusters",
+            "location": "eastus2",
+            "dependsOn": [],
+            "properties": {
+                "clusterVersion": "3.4",
+                "osType": "Linux",
+                "tier": "standard",
+                "clusterDefinition": {
+                    "kind": "spark",
+                    "configurations": {
+                        "gateway": {
+                            "restAuthCredential.isEnabled": true,
+                            "restAuthCredential.username": "admin",
+                            "restAuthCredential.password": "rdPa$$w0rd"
+                        },
+                        "core-site": {
+                            "fs.defaultFS": "wasb://dciborowspark2@sparkonazureeastus2.blob.core.windows.net",
+                            "fs.azure.account.key.sparkonazureeastus2.blob.core.windows.net": "+et76bLLUmdEzzu2kr+DgOLsTZoIIJRubz2vA8HA1ToQ2bSvbb3ICJZrIrsG/YlM2DReSjSmhgLuevaxNYo2Bw=="
+                        },
+                        "hive-site": {
+                            "javax.jdo.option.ConnectionDriverName": "com.microsoft.sqlserver.jdbc.SQLServerDriver",
+                            "javax.jdo.option.ConnectionURL": "jdbc:sqlserver://dciborowmeta.database.windows.net;database=hivemetastore;encrypt=true;trustServerCertificate=true;create=false;loginTimeout=300",
+                            "javax.jdo.option.ConnectionUserName": "dciborow",
+                            "javax.jdo.option.ConnectionPassword": "rdPa$$w0rd"
+                        },
+                        "hive-env": {
+                            "hive_database": "Existing MSSQL Server database with SQL authentication",
+                            "hive_database_name": "hivemetastore",
+                            "hive_database_type": "mssql",
+                            "hive_existing_mssql_server_database": "hivemetastore",
+                            "hive_existing_mssql_server_host": "dciborowmeta.database.windows.net",
+                            "hive_hostname": "dciborowmeta.database.windows.net"
+                        }
+                    }
+                },
+                "computeProfile": {
+                    "roles": [
+                        {
+                            "name": "headnode",
+                            "minInstanceCount": 1,
+                            "targetInstanceCount": 2,
+                            "hardwareProfile": {
+                                "vmSize": "Standard_D14_V2"
+                            },
+                            "osProfile": {
+                                "linuxOperatingSystemProfile": {
+                                    "username": "hdiuser",
+                                    "password": "rdPa$$w0rd"
+                                }
+                            },
+                            "scriptActions": []
+                        },
+                        {
+                            "name": "workernode",
+                            "minInstanceCount": 1,
+                            "targetInstanceCount": 32,
+                            "hardwareProfile": {
+                                "vmSize": "Standard_D14_V2"
+                            },
+                            "osProfile": {
+                                "linuxOperatingSystemProfile": {
+                                    "username": "hdiuser",
+                                    "password": "rdPa$$w0rd"
+                                }
+                            },
+                            "scriptActions": []
+                        }
+                    ]
+                }
+            }
+        }
