@@ -69,13 +69,6 @@
                 "description": "The password of the admin user of the SQL Server"
             }
         },
-        "databaseName": {
-            "type": "string",
-            "defaultValue": "testdb",
-            "metadata": {
-                "description": "The name of the new database to create."
-            }
-        },
         "dataWarehouseName": {
             "type": "string",
             "defaultValue": "CentralTutorialDW",
@@ -161,7 +154,6 @@
         "BlobInputTableName": "BlobInputTable",
         "SQLOutputTableName": "SQLOutputTable",
         "PipelineName": "Blob2SQLPipeline",
-        // VM related variables
         "storageAccountName": "[concat('pbvm', uniquestring(resourceGroup().id))]",
         "sizeOfDiskInGB": "1023",
         "nicName": "PBVMNic",
@@ -204,24 +196,6 @@
             },
             "resources": [
                 {
-                    "name": "[parameters('databaseName')]",
-                    "type": "databases",
-                    "location": "[resourceGroup().location]",
-                    "tags": {
-                        "displayName": "Database"
-                    },
-                    "apiVersion": "2014-04-01-preview",
-                    "dependsOn": [
-                        "[concat('Microsoft.Sql/servers/', variables('sqlserverName'))]"
-                    ],
-                    "properties": {
-                        "edition": "[parameters('edition')]",
-                        "collation": "[parameters('collation')]",
-                        "maxSizeBytes": "[parameters('maxSizeBytes')]",
-                        "requestedServiceObjectiveName": "[parameters('requestedServiceObjectiveName')]"
-                    }
-                },
-                {
                     "name": "[parameters('dataWarehouseName')]",
                     "type": "databases",
                     "location": "[resourceGroup().location]",
@@ -254,7 +228,7 @@
             ]
         },
         {
-            "name": "[parameters('clusterName')]",
+            "name": "[concat(parameters('clusterName'), uniquestring(resourceGroup().id))]",
             "type": "Microsoft.HDInsight/clusters",
             "location": "[resourceGroup().location]",
             "apiVersion": "[variables('clusterApiVersion')]",
@@ -316,7 +290,6 @@
                 }
             }
         },
-        // VM related resources
         {
             "type": "Microsoft.Storage/storageAccounts",
             "name": "[variables('storageAccountName')]",
@@ -336,7 +309,7 @@
             "properties": {
                 "publicIPAllocationMethod": "[variables('publicIPAddressType')]",
                 "dnsSettings": {
-                    "domainNameLabel": "[parameters('dnsLabelPrefix')]"
+                    "domainNameLabel": "[concat(parameters('clusterName'), parameters('dnsLabelPrefix'), uniquestring(resourceGroup().id))]"
                 }
             }
         },
@@ -387,7 +360,6 @@
                 ]
             }
         },
-        // Start of auto-generated json
         {
             "apiVersion": "2016-03-30",
             "properties": {
@@ -400,11 +372,10 @@
                         "name": "SQLPB-osDisk.5f5b5456-8dd5-4f5b-b171-22eb83aea14d.vhd",
                         "createOption": "FromImage",
                         "image": {
-                            "uri": "https://emawa06078627.blob.core.windows.net/system/Microsoft.Compute/Images/generalized/SQLPB-osDisk.5f5b5456-8dd5-4f5b-b171-22eb83aea14d.vhd"
+                            "uri": "https://eahdwstorage.blob.core.windows.net/system/Microsoft.Compute/Images/generalized/SQLPB-osDisk.5f5b5456-8dd5-4f5b-b171-22eb83aea14d.vhd"
                         },
                         "vhd": {
-                            "uri": "[concat([variables('clusterStorageAccountName')], '.blob.core.windows.net/newvmcontainer4766b040-2d46-42f9-87c2-5dfb368a2182/osDisk.4766b040-2d46-42f9-87c2-5dfb368a2182.vhd')]"
-                            //"https://emawa06078627.blob.core.windows.net/newvmcontainer4766b040-2d46-42f9-87c2-5dfb368a2182/osDisk.4766b040-2d46-42f9-87c2-5dfb368a2182.vhd"
+                            "uri": "[concat('https://eahdwstorage.blob.core.windows.net/newvmcontainer-', uniquestring(resourceGroup().id), '/osDisk.4766b040-2d46-42f9-87c2-5dfb368a2182.vhd')]"
                         },
                         "caching": "ReadWrite"
                     },
@@ -415,11 +386,10 @@
                             "diskSizeGB": "[variables('sizeOfDiskInGB')]",
                             "createOption": "FromImage",
                             "image": {
-                                "uri": "https://emawa06078627.blob.core.windows.net/system/Microsoft.Compute/Images/generalized/SQLPB-dataDisk-0.5f5b5456-8dd5-4f5b-b171-22eb83aea14d.vhd"
+                                "uri": "https://eahdwstorage.blob.core.windows.net/system/Microsoft.Compute/Images/generalized/SQLPB-dataDisk-0.5f5b5456-8dd5-4f5b-b171-22eb83aea14d.vhd"
                             },
                             "vhd": {
-                                "uri": "[concat([variables('clusterStorageAccountName')], '.blob.core.windows.net/newvmcontainer4766b040-2d46-42f9-87c2-5dfb368a2182/dataDisk-0.4766b040-2d46-42f9-87c2-5dfb368a2182.vhd')]"
-                                //"https://emawa06078627.blob.core.windows.net/newvmcontainer4766b040-2d46-42f9-87c2-5dfb368a2182/dataDisk-0.4766b040-2d46-42f9-87c2-5dfb368a2182.vhd"
+                                "uri": "[concat('https://eahdwstorage.blob.core.windows.net/newvmcontainer-', uniquestring(resourceGroup().id), '/dataDisk-0.4766b040-2d46-42f9-87c2-5dfb368a2182.vhd')]"
                             },
                             "caching": "ReadWrite"
                         }
@@ -440,36 +410,34 @@
                 "diagnosticsProfile": {
                     "bootDiagnostics": {
                         "enabled": true,
-                        "storageUri":   "[concat('https://', [variables('clusterStorageAccountName')], '.blob.core.windows.net/')]"
-                        //"https://emawa06072613.blob.core.windows.net/"
+                        "storageUri": "[concat('https://', variables('clusterStorageAccountName'), '.blob.core.windows.net/')]"
                     }
                 },
                 "provisioningState": 0
             },
             "name": "[parameters('vmName')]",
             "type": "Microsoft.Compute/virtualMachines",
-            "location": "eastus2"
+            "location": "eastus2",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/', variables('clusterStorageAccountName'))]",
+            ],
         }
     ],
     "outputs": {
-        "StorageAccountName": {
-            "type": "string",
-            "value": "[variables('clusterStorageAccountName')]"
-        },
-        "StorageAccountKeys": {
-            "value": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('clusterStorageAccountName')), '2016-01-01').keys[0].value]",
-            "type": "string"
-        },
         "HDIClusterName": {
             "value": "[parameters('clusterName')]",
             "type": "string"
         },
-        "SQLServerName": {
-            "value": "[variables('sqlserverName')]",
+        "HDIStorageAccountName": {
+            "type": "string",
+            "value": "[variables('clusterStorageAccountName')]"
+        },
+        "HDIStorageAccountKey": {
+            "value": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('clusterStorageAccountName')), '2016-01-01').keys[0].value]",
             "type": "string"
         },
-        "SQLDatabaseName": {
-            "value": "[parameters('databaseName')]",
+        "SQLServerName": {
+            "value": "[variables('sqlserverName')]",
             "type": "string"
         },
         "SQLDataWarehouseName": {
