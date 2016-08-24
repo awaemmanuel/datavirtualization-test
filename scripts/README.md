@@ -40,7 +40,7 @@ The tutorial will describe the overall approach through the following steps:
 1. Running SQL-like transactions on SQL Data Warehouse and  Spark-Shell using SparkSQL.
 
 ### Architecture Overview
-![Hybrid data virtualization Architecture](./scripts/Markdown/media/architecture-overview.PNG "General Overview")
+![Hybrid data virtualization Architecture](./Markdown/media/architecture-overview.PNG "General Overview")
 
 ### Important Notes
 Please make note of the following key points:
